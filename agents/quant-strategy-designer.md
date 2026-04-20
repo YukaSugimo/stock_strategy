@@ -128,9 +128,46 @@ if adx >= 20 and price > upper_band:
     signal = "buy"
 ```
 
+## 完了フロー
+
+### Step 4: 動作確認（days=90 workers=1）
+
+戦略ファイルとパラメータファイルを作成したら、まず簡易バックテストで動作確認する。
+
+```powershell
+python scripts/backtest.py --strategy sXX_name --days 90 --workers 1
+```
+
+エラーが出た場合は修正して再実行する。エラーなく完走するまで繰り返す。
+
+### Step 5: quant-backtesterエージェントへの引き継ぎ
+
+動作確認が完了したら、以下のメッセージでquant-backtesterエージェントを呼び出す：
+
+```
+バックテストを回して
+戦略: sXX_name
+期間: 365日
+workers: 8
+```
+
+quant-backtesterエージェントがバックテスト（days=365 workers=8）を実行し、
+結果分析・次のアクション提案まで完遂する。
+
+### Step 6: gitコミット
+
+バックテスト完了後、以下のファイルをコミットする：
+
+```powershell
+git add scripts/strategies/sXX_name.py params/sXX_name.yaml params/sXX_name_grid.yaml
+git commit -m "feat: add sXX_name strategy and params"
+```
+
 ## 完了条件
 
 - `strategies/sXX_name.py` が作成されていること
 - `params/sXX_name.yaml` が作成されていること
 - `params/sXX_name_grid.yaml` が作成されていること
-- `python scripts/backtest.py --strategy sXX_name --params params/sXX_name.yaml` でエラーなく動作すること
+- `python scripts/backtest.py --strategy sXX_name --days 90 --workers 1` でエラーなく動作すること
+- quant-backtesterエージェントへの引き継ぎが完了していること
+- gitコミットが完了していること

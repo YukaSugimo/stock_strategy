@@ -25,25 +25,28 @@ data/
 
 ## 分析フロー
 
-### Step 1: ファイルの読み込み
+### Step 1: ファイルの自動読み込み
+
+起動時に以下の3ファイルを自動で読み込む（存在しない場合はスキップしてエラーを表示）：
 
 ```python
-import json, csv, os
+import json, csv, os, glob
 import pandas as pd
 
-# バックテストサマリー
+# 1. バックテストサマリー（必須）
 with open('data/backtest_summary.json', encoding='utf-8') as f:
     summary = json.load(f)
 
-# 個別トレード
+# 2. 個別トレード（必須）
 trades = pd.read_csv('data/backtest_results.csv', encoding='utf-8-sig')
 
-# グリッドサーチ結果（存在する場合）
-optimize_dir = 'data/optimize_results'
-if os.path.exists(optimize_dir):
-    files = sorted(os.listdir(optimize_dir))
-    if files:
-        opt = pd.read_csv(f'{optimize_dir}/{files[-1]}', encoding='utf-8-sig')
+# 3. 最新のoptimize_*.json（存在する場合）
+opt_files = sorted(glob.glob('data/optimize_*.json'))
+opt = None
+if opt_files:
+    with open(opt_files[-1], encoding='utf-8') as f:
+        opt = json.load(f)
+    print(f'グリッドサーチ結果を読み込み: {opt_files[-1]}')
 ```
 
 ### Step 2: 基本指標の評価
@@ -143,3 +146,14 @@ for col in opt.columns:
 
 ADXによる市場レジーム判定の追加を提案する。
 トレンド相場とレンジ相場で戦略を切り替える設計を提案する。
+
+## gitコミット
+
+パラメータファイルや設計書を変更した場合は、分析完了後にgitコミットする：
+
+```powershell
+git add params/ doc/
+git commit -m "fix: update params/design based on backtest analysis"
+```
+
+変更がない場合はコミット不要。

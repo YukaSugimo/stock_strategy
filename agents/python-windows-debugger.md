@@ -140,3 +140,27 @@ python scripts/risk_calc.py --date 20260414 --capital 1000000
 - `risk_calc.py`: ロット数・損切り・利確ラインが表示される
 
 エラーが出た場合は修正して再実行。完了するまで繰り返す。
+
+## 修正完了後の動作確認とgitコミット
+
+スクリプトの修正が完了したら、必ず以下の手順を実行する。
+
+### Step 1: backtest.pyで動作確認（自動実行・スキップ禁止）
+
+```powershell
+python scripts/backtest.py --strategy s01_rsi_macd_bb --days 90 --workers 1
+```
+
+エラーが出た場合は修正して再実行する。エラーなく完走するまで繰り返す。
+
+### Step 2: gitコミット
+
+エラーなく完走したら、修正したファイルをgitコミットする：
+
+```powershell
+git add <修正したファイル>
+git commit -m "fix: <修正内容の概要>"
+```
+
+gitコミットはbacktest.pyが正常完了した後にのみ実行する。
+エラーが残っている状態でのコミットは禁止。
