@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-04-20T14:12:22.548759",
+  "total_tickers": 94,
+  "tickers_traded": 10,
+  "trade_count": 10,
+  "win_rate": 50.0,
+  "avg_pnl": 0.7,
+  "profit_factor": 1.3,
+  "max_drawdown": 11.3,
+  "total_return": 7.04,
+  "avg_win": 6.13,
+  "avg_loss": -4.72,
+  "top5_by_winrate": [
+    {
+      "ticker": "6723.T",
+      "trade_count": 1,
+      "win_rate": 100.0,
+      "avg_pnl": 12.37,
+      "total_return": 12.37,
+      "max_drawdown": 0.0
+    },
+    {
+      "ticker": "7270.T",
+      "trade_count": 1,
+      "win_rate": 100.0,
+      "avg_pnl": 0.76,
+      "total_return": 0.76,
+      "max_drawdown": 0.0
+    },
+    {
+      "ticker": "8031.T",
+      "trade_count": 1,
+      "win_rate": 100.0,
+      "avg_pnl": 6.02,
+      "total_return": 6.02,
+      "max_drawdown": 0.0
+    },
+    {
+      "ticker": "8766.T",
+      "trade_count": 1,
+      "win_rate": 100.0,
+      "avg_pnl": 4.19,
+      "total_return": 4.19,
+      "max_drawdown": 0.0
+    },
+    {
+      "ticker": "9107.T",
+      "trade_count": 1,
+      "win_rate": 100.0,
+      "avg_pnl": 7.32,
+      "total_return": 7.32,
+      "max_drawdown": 0.0
+    }
+  ],
+  "result_breakdown": {
+    "take_profit": 3,
+    "stop_loss": 5,
+    "timeout": 2
+  }
+}

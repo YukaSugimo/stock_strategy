@@ -1,0 +1,4 @@
+rsi_buy_threshold:  [25, 30, 35, 40]
+rsi_sell_threshold: [60, 65, 70, 75]
+bb_std:             [1.5, 2.0, 2.5]
+entry_condition:    ["2of3", "3of3"]

@@ -1,0 +1,12 @@
+name: s01_rsi_macd_bb
+description: RSI/MACD/BBの3指標一致ルール（基準戦略）
+
+rsi_period:          14
+rsi_buy_threshold:   30
+rsi_sell_threshold:  70
+macd_fast:           12
+macd_slow:           26
+macd_signal:         9
+bb_period:           20
+bb_std:              2.0
+entry_condition:     2of3

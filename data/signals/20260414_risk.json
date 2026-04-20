@@ -1,0 +1,17 @@
+[
+  {
+    "ticker": "7203.T",
+    "direction": "buy",
+    "price": 3319.0,
+    "lot": 0,
+    "investment": 0,
+    "stop_loss": null,
+    "take_profit": null,
+    "risk_amount": 0,
+    "risk_pct": 0,
+    "kelly_fraction": 0.125,
+    "status": "excluded",
+    "reason": "ポジションサイズが単元株未満",
+    "signal_status": "confirmed"
+  }
+]

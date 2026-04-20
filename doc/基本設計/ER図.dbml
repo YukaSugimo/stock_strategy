@@ -1,0 +1,269 @@
+// =====================================================
+// stock_quant DB — dbdiagram.io DSL
+// https://dbdiagram.io にペーストして使う
+// =====================================================
+
+// ── マスタ系 ──────────────────────────────────────────
+
+Table tickers {
+  id          serial      [pk, increment, note: "銘柄ID"]
+  code        varchar(20) [not null, unique, note: "ティッカーコード (例: 7203.T)"]
+  name        varchar(100) [note: "銘柄名"]
+  market      varchar(20)  [note: "市場区分 (prime/standard/growth)"]
+  sector      varchar(50)  [note: "業種"]
+  is_active   boolean     [not null, default: true, note: "有効フラグ"]
+  created_at  timestamp   [not null, default: `now()`, note: "作成日時"]
+}
+
+Table strategies {
+  id          serial       [pk, increment, note: "戦略ID"]
+  name        varchar(100) [not null, unique, note: "戦略名 (例: s01_rsi_macd_bb)"]
+  description text         [note: "戦略説明"]
+  created_at  timestamp    [not null, default: `now()`]
+}
+
+Table strategy_versions {
+  id          serial      [pk, increment, note: "バージョンID"]
+  strategy_id integer     [not null, ref: > strategies.id, note: "戦略ID"]
+  version     varchar(20) [not null, note: "バージョン番号 (例: 1.0)"]
+  git_hash    varchar(40) [not null, note: "Gitコミットハッシュ"]
+  changelog   text        [note: "変更内容メモ"]
+  created_at  timestamp   [not null, default: `now()`]
+
+  indexes {
+    (strategy_id, git_hash) [unique]
+  }
+}
+
+Table watchlists {
+  id          serial       [pk, increment, note: "ウォッチリストID"]
+  name        varchar(100) [not null, unique, note: "ウォッチリスト名"]
+  description text         [note: "説明"]
+  created_at  timestamp    [not null, default: `now()`]
+}
+
+Table watchlist_tickers {
+  id           serial    [pk, increment]
+  watchlist_id integer   [not null, ref: > watchlists.id]
+  ticker_id    integer   [not null, ref: > tickers.id]
+  added_at     timestamp [not null, default: `now()`]
+
+  indexes {
+    (watchlist_id, ticker_id) [unique]
+  }
+}
+
+// ── 価格データ系 ──────────────────────────────────────
+
+Table ohlcv {
+  id        serial        [pk, increment]
+  ticker_id integer       [not null, ref: > tickers.id]
+  date      date          [not null, note: "日付"]
+  open      numeric(12,2) [not null, note: "始値"]
+  high      numeric(12,2) [not null, note: "高値"]
+  low       numeric(12,2) [not null, note: "安値"]
+  close     numeric(12,2) [not null, note: "終値"]
+  volume    bigint        [not null, note: "出来高"]
+
+  indexes {
+    (ticker_id, date) [unique]
+    (ticker_id, date) [name: "idx_ohlcv_ticker_date"]
+  }
+}
+
+Table fetch_logs {
+  id           serial      [pk, increment]
+  ticker_id    integer     [not null, ref: > tickers.id]
+  fetched_from date        [not null, note: "取得開始日"]
+  fetched_to   date        [not null, note: "取得終了日"]
+  status       varchar(20) [not null, note: "success / failed"]
+  error_msg    text        [note: "エラーメッセージ"]
+  fetched_at   timestamp   [not null, default: `now()`]
+
+  indexes {
+    ticker_id [name: "idx_fetch_logs_ticker_id"]
+  }
+}
+
+// ── 指標キャッシュ系 ─────────────────────────────────
+
+Table indicator_params {
+  id          serial      [pk, increment]
+  params_hash varchar(64) [not null, unique, note: "パラメータのハッシュ値"]
+  params      jsonb       [not null, note: "パラメータ内容 (例: {period: 14})"]
+  created_at  timestamp   [not null, default: `now()`]
+}
+
+Table indicators {
+  id                  serial        [pk, increment]
+  ticker_id           integer       [not null, ref: > tickers.id]
+  date                date          [not null, note: "日付"]
+  name                varchar(50)   [not null, note: "指標名 (例: rsi / macd / bb_upper)"]
+  value               numeric(12,4) [not null, note: "指標値"]
+  indicator_param_id  integer       [not null, ref: > indicator_params.id]
+
+  indexes {
+    (ticker_id, date, name, indicator_param_id) [unique]
+    (ticker_id, date) [name: "idx_indicators_ticker_date"]
+  }
+}
+
+// ── バックテスト系 ────────────────────────────────────
+
+Table runs {
+  id             serial    [pk, increment, note: "実行ID"]
+  strategy_id    integer   [not null, ref: > strategies.id]
+  version_id     integer   [not null, ref: > strategy_versions.id]
+  watchlist_id   integer   [ref: > watchlists.id, note: "NULLの場合はCSV直接指定"]
+  days           integer   [not null, note: "バックテスト期間（日数）"]
+  tickers_count  integer   [not null, note: "対象銘柄数"]
+  created_at     timestamp [not null, default: `now()`]
+}
+
+Table run_params {
+  id      serial       [pk, increment]
+  run_id  integer      [not null, ref: > runs.id]
+  key     varchar(100) [not null, note: "パラメータ名 (例: rsi_buy_threshold)"]
+  value   varchar(100) [not null, note: "パラメータ値 (例: 30)"]
+
+  indexes {
+    (run_id, key) [unique]
+  }
+}
+
+Table trades {
+  id           serial        [pk, increment, note: "トレードID"]
+  run_id       integer       [not null, ref: > runs.id]
+  ticker_id    integer       [not null, ref: > tickers.id]
+  entry_date   date          [not null]
+  exit_date    date
+  direction    varchar(10)   [not null, note: "buy / sell"]
+  entry_price  numeric(12,2) [not null]
+  exit_price   numeric(12,2)
+  pnl_pct      numeric(8,4)  [note: "損益率 (%)"]
+  result       varchar(20)   [note: "take_profit / stop_loss / timeout"]
+  hold_days    integer
+
+  indexes {
+    run_id    [name: "idx_trades_run_id"]
+    ticker_id [name: "idx_trades_ticker_id"]
+  }
+}
+
+Table summaries {
+  id             serial       [pk, increment]
+  run_id         integer      [not null, unique, ref: > runs.id]
+  trade_count    integer      [not null]
+  win_rate       numeric(5,2)
+  avg_pnl        numeric(8,4)
+  profit_factor  numeric(8,4)
+  max_drawdown   numeric(8,4)
+  total_return   numeric(8,4)
+}
+
+// ── グリッドサーチ系 ─────────────────────────────────
+
+Table optimize_jobs {
+  id             serial    [pk, increment, note: "ジョブID"]
+  strategy_id    integer   [not null, ref: > strategies.id]
+  version_id     integer   [not null, ref: > strategy_versions.id]
+  watchlist_id   integer   [ref: > watchlists.id]
+  days           integer   [not null]
+  tickers_count  integer   [not null]
+  created_at     timestamp [not null, default: `now()`]
+}
+
+Table optimize_job_grid {
+  id      serial       [pk, increment]
+  job_id  integer      [not null, ref: > optimize_jobs.id]
+  key     varchar(100) [not null, note: "パラメータ名 (例: rsi_buy_threshold)"]
+  values  text         [not null, note: "探索値リスト (例: 25,30,35,40)"]
+
+  indexes {
+    (job_id, key) [unique]
+  }
+}
+
+Table optimize_results {
+  id             serial       [pk, increment, note: "結果ID"]
+  job_id         integer      [not null, ref: > optimize_jobs.id]
+  trade_count    integer      [not null]
+  win_rate       numeric(5,2)
+  avg_pnl        numeric(8,4)
+  profit_factor  numeric(8,4)
+  max_drawdown   numeric(8,4)
+}
+
+Table optimize_result_params {
+  id         serial       [pk, increment]
+  result_id  integer      [not null, ref: > optimize_results.id]
+  key        varchar(100) [not null]
+  value      varchar(100) [not null]
+
+  indexes {
+    (result_id, key) [unique]
+  }
+}
+
+// ── シグナル系 ────────────────────────────────────────
+
+Table signals {
+  id           serial        [pk, increment, note: "シグナルID"]
+  strategy_id  integer       [not null, ref: > strategies.id]
+  version_id   integer       [not null, ref: > strategy_versions.id]
+  ticker_id    integer       [not null, ref: > tickers.id]
+  date         date          [not null]
+  direction    varchar(10)   [not null, note: "buy / sell"]
+  status       varchar(20)   [not null, note: "confirmed / candidate"]
+  price        numeric(12,2) [not null]
+
+  indexes {
+    (strategy_id, version_id, ticker_id, date) [unique]
+    date [name: "idx_signals_date"]
+  }
+}
+
+Table signal_indicators {
+  id         serial        [pk, increment]
+  signal_id  integer       [not null, ref: > signals.id]
+  key        varchar(50)   [not null, note: "指標名 (例: rsi / macd / bb_pct_b)"]
+  value      numeric(12,4) [not null]
+
+  indexes {
+    (signal_id, key) [unique]
+  }
+}
+
+// ── 実運用系 ──────────────────────────────────────────
+
+Table live_trades {
+  id                serial        [pk, increment, note: "実運用トレードID"]
+  signal_id         integer       [not null, ref: > signals.id]
+  entry_date        date          [not null]
+  exit_date         date
+  entry_price       numeric(12,2) [not null]
+  exit_price        numeric(12,2)
+  lot               integer       [not null, note: "購入株数"]
+  stop_loss_price   numeric(12,2) [note: "損切り価格"]
+  take_profit_price numeric(12,2) [note: "利確価格"]
+  pnl_pct           numeric(8,4)
+  pnl_jpy           numeric(12,2) [note: "損益額（円）"]
+  result            varchar(20)   [note: "take_profit / stop_loss / holding"]
+}
+
+// ── ログ系 ────────────────────────────────────────────
+
+Table system_logs {
+  id          serial      [pk, increment]
+  level       varchar(10) [not null, note: "INFO / WARN / ERROR"]
+  component   varchar(50) [not null, note: "fetch_data / backtest / signal"]
+  message     text        [not null]
+  ticker_id   integer     [ref: > tickers.id, note: "関連銘柄（任意）"]
+  run_id      integer     [ref: > runs.id,    note: "関連実行（任意）"]
+  job_id      integer     [ref: > optimize_jobs.id, note: "関連ジョブ（任意）"]
+  created_at  timestamp   [not null, default: `now()`]
+
+  indexes {
+    created_at [name: "idx_system_logs_created_at"]
+  }
+}

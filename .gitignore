@@ -1,0 +1,24 @@
+# 環境変数・認証情報
+.env
+
+# 生データ・ログ（大容量 / 再生成可能）
+data/raw/
+logs/
+
+# バックテスト出力（再生成可能）
+data/backtest_results.csv
+data/optimize_*.json
+
+# Claude Code 内部設定
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Windows
+Thumbs.db
+desktop.ini
