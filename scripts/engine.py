@@ -184,6 +184,10 @@ def backtest_one(ticker: str, days: int, strategy_name: str, params: dict = None
                 "skipped":  True,
             }
 
+        sl_pct  = strategy.params.get("stop_loss_pct",   STOP_LOSS_PCT)
+        tp_pct  = strategy.params.get("take_profit_pct", TAKE_PROFIT_PCT)
+        hd_max  = int(strategy.params.get("hold_days_max",   HOLD_DAYS_MAX))
+
         close  = df["Close"].astype(float).squeeze()
         volume = df["Volume"].astype(float).squeeze() if "Volume" in df.columns else None
         trades = []
@@ -207,11 +211,11 @@ def backtest_one(ticker: str, days: int, strategy_name: str, params: dict = None
                     pnl_pct = -pnl_pct
 
                 result = None
-                if pnl_pct <= -STOP_LOSS_PCT:
+                if pnl_pct <= -sl_pct:
                     result = "stop_loss"
-                elif pnl_pct >= TAKE_PROFIT_PCT:
+                elif pnl_pct >= tp_pct:
                     result = "take_profit"
-                elif hold_days >= HOLD_DAYS_MAX:
+                elif hold_days >= hd_max:
                     result = "timeout"
 
                 if result:

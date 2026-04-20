@@ -1,5 +1,5 @@
 name: s02_adx_filter
-description: RSI/MACD/BB 3指標 + ADXトレンドフィルター（ADX>25のトレンド相場のみエントリー）
+description: RSI/MACD/BB 3指標 + ADXレンジフィルター（ADX<=25のレンジ相場のみエントリー）
 
 rsi_period:          14
 rsi_buy_threshold:   30
@@ -12,3 +12,6 @@ bb_std:              2.0
 adx_period:          14
 adx_threshold:       25
 entry_condition:     2of3
+stop_loss_pct:       0.03
+take_profit_pct:     0.04
+hold_days_max:       10

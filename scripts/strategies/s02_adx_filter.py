@@ -58,7 +58,7 @@ class S02AdxFilter(BaseStrategy):
             "adx":      round(adx_value, 2),
         }
 
-        if not (adx_value > adx_threshold):  # NaN / adx<=threshold どちらもスキップ
+        if not (adx_value <= adx_threshold):  # NaN / adx>threshold（トレンド相場）はレンジ隲場の逆張りに不適なためスキップ
             return {"signal": None, "status": "none", "indicators": indicators}
 
         buy_threshold  = p.get("rsi_buy_threshold",  30)
