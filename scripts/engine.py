@@ -92,15 +92,26 @@ _DELISTED_KEYWORDS = [
 ]
 
 
-def fetch_ohlcv(ticker: str, days: int) -> pd.DataFrame | None:
+def fetch_ohlcv(
+    ticker: str,
+    days: int,
+    start_date: str = None,
+    end_date: str = None,
+) -> pd.DataFrame | None:
     """
     yfinanceでOHLCVを取得する。
+    start_date が指定された場合は start_date〜end_date の期間を使用する。
     上場廃止・404エラーの場合はNoneを返す（例外は出さない）。
     """
     logger = get_logger()
 
-    end   = datetime.today()
-    start = end - timedelta(days=days)
+    if start_date:
+        start_str = start_date
+        end_str   = end_date or datetime.today().strftime("%Y-%m-%d")
+    else:
+        end_dt    = datetime.today()
+        start_str = (end_dt - timedelta(days=days)).strftime("%Y-%m-%d")
+        end_str   = end_dt.strftime("%Y-%m-%d")
 
     # yfinanceのstderrノイズを抑制
     import io
@@ -111,8 +122,8 @@ def fetch_ohlcv(ticker: str, days: int) -> pd.DataFrame | None:
         with contextlib.redirect_stderr(stderr_capture):
             df = yf.download(
                 ticker,
-                start=start.strftime("%Y-%m-%d"),
-                end=end.strftime("%Y-%m-%d"),
+                start=start_str,
+                end=end_str,
                 interval="1d",
                 progress=False,
                 auto_adjust=True,
@@ -144,16 +155,25 @@ def fetch_ohlcv(ticker: str, days: int) -> pd.DataFrame | None:
 
 # ── 1銘柄バックテスト ─────────────────────────────────────────────────────────
 
-def backtest_one(ticker: str, days: int, strategy_name: str, params: dict = None) -> dict:
+def backtest_one(
+    ticker: str,
+    days: int,
+    strategy_name: str,
+    params: dict = None,
+    start_date: str = None,
+    end_date: str = None,
+) -> dict:
     """
     1銘柄のバックテストを実行する。
     ProcessPoolExecutorから呼ばれるため、importは関数内で完結させる。
 
     Args:
         ticker:        銘柄コード
-        days:          バックテスト期間（日数）
+        days:          バックテスト期間（日数）。start_date指定時は無視する
         strategy_name: 戦略名
         params:        パラメータ辞書。Noneの場合はyamlから読み込む
+        start_date:    バックテスト開始日（YYYY-MM-DD）。指定時はdaysより優先
+        end_date:      バックテスト終了日（YYYY-MM-DD）。Noneの場合は今日
 
     Returns:
         {
@@ -169,7 +189,7 @@ def backtest_one(ticker: str, days: int, strategy_name: str, params: dict = None
         else:
             strategy = load_strategy(strategy_name)
 
-        df = fetch_ohlcv(ticker, days)
+        df = fetch_ohlcv(ticker, days, start_date=start_date, end_date=end_date)
 
         if df is None:
             return {

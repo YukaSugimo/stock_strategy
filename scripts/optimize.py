@@ -61,11 +61,12 @@ def build_param_combinations(base_params: dict, grid_params: dict) -> list:
 
 def run_one(args_tuple) -> dict:
     """1パラメータセット×全銘柄のバックテストをengine経由で実行する。"""
-    strategy_name, params, tickers, days = args_tuple
+    strategy_name, params, tickers, days, start_date, end_date = args_tuple
 
     results = []
     for ticker in tickers:
-        r = backtest_one(ticker, days, strategy_name, params)
+        r = backtest_one(ticker, days, strategy_name, params,
+                         start_date=start_date, end_date=end_date)
         results.append(r)
 
     summary = calc_summary(results)
@@ -76,12 +77,18 @@ def main():
     parser = argparse.ArgumentParser(description="グリッドサーチエンジン")
     parser.add_argument("--strategy",  required=True,         help="戦略名（例: s01_rsi_macd_bb）")
     parser.add_argument("--watchlist", default="data/watchlist.csv")
-    parser.add_argument("--days",      type=int, default=365, help="バックテスト期間（日）")
+    parser.add_argument("--days",      type=int, default=365, help="バックテスト期間（日）。--start指定時は無視")
+    parser.add_argument("--start",     default=None,          help="バックテスト開始日（YYYY-MM-DD）。指定時は--daysより優先")
+    parser.add_argument("--end",       default=None,          help="バックテスト終了日（YYYY-MM-DD）。デフォルト: 今日")
     parser.add_argument("--workers",   type=int, default=4,   help="並列ワーカー数")
     args = parser.parse_args()
 
     logger = get_logger()
-    logger.info(f"optimize 開始: strategy={args.strategy} days={args.days} workers={args.workers}")
+    if args.start:
+        period_str = f"start={args.start} end={args.end or 'today'}"
+    else:
+        period_str = f"days={args.days}"
+    logger.info(f"optimize 開始: strategy={args.strategy} {period_str} workers={args.workers}")
 
     path = Path(args.watchlist)
     if not path.exists():
@@ -101,13 +108,19 @@ def main():
     grid_params  = load_grid_params(args.strategy)
     combinations = build_param_combinations(base_params, grid_params)
 
+    if args.start:
+        period_display = f"{args.start} ~ {args.end or 'today'}"
+    else:
+        period_display = f"{args.days}日"
+
     print(f"[optimize] 戦略: {args.strategy}")
-    print(f"[optimize] 銘柄数: {len(tickers)}  期間: {args.days}日")
+    print(f"[optimize] 銘柄数: {len(tickers)}  期間: {period_display}")
     print(f"[optimize] パラメータ組み合わせ数: {len(combinations)}")
     print(f"[optimize] ワーカー: {args.workers}")
     print()
 
-    tasks      = [(args.strategy, p, tickers, args.days) for p in combinations]
+    tasks      = [(args.strategy, p, tickers, args.days, args.start, args.end)
+                  for p in combinations]
     results    = []
     start_time = time.time()
 
@@ -147,6 +160,8 @@ def main():
         json.dump({
             "strategy":     args.strategy,
             "days":         args.days,
+            "start_date":   args.start,
+            "end_date":     args.end,
             "tickers":      len(tickers),
             "generated_at": datetime.now().isoformat(),
             "results":      sorted_results,

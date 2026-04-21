@@ -294,14 +294,20 @@ def main():
     parser = argparse.ArgumentParser(description="大量銘柄対応バックテスト")
     parser.add_argument("--strategy",  required=True,         help="戦略名（例: s01_rsi_macd_bb）")
     parser.add_argument("--watchlist", default="data/watchlist.csv")
-    parser.add_argument("--days",      type=int, default=365, help="バックテスト期間（日）")
+    parser.add_argument("--days",      type=int, default=365, help="バックテスト期間（日）。--start指定時は無視")
+    parser.add_argument("--start",     default=None,          help="バックテスト開始日（YYYY-MM-DD）。指定時は--daysより優先")
+    parser.add_argument("--end",       default=None,          help="バックテスト終了日（YYYY-MM-DD）。デフォルト: 今日")
     parser.add_argument("--workers",   type=int, default=4,   help="並列ワーカー数")
     parser.add_argument("--resume",    action="store_true",   help="チェックポイントから再開")
     parser.add_argument("--chunk",     type=int, default=20,  help="一度に処理する銘柄数")
     args = parser.parse_args()
 
     logger = get_logger()
-    logger.info(f"backtest 開始: strategy={args.strategy} days={args.days} workers={args.workers}")
+    if args.start:
+        period_str = f"start={args.start} end={args.end or 'today'}"
+    else:
+        period_str = f"days={args.days}"
+    logger.info(f"backtest 開始: strategy={args.strategy} {period_str} workers={args.workers}")
 
     path = Path(args.watchlist)
     if not path.exists():
@@ -324,9 +330,14 @@ def main():
     remaining = [t for t in tickers if t not in completed]
     total     = len(tickers)
 
+    if args.start:
+        period_display = f"{args.start} ~ {args.end or 'today'}"
+    else:
+        period_display = f"{args.days}日"
+
     print(f"[backtest] 戦略: {args.strategy}")
     print(f"[backtest] 対象: {total}銘柄  残り: {len(remaining)}銘柄  "
-          f"期間: {args.days}日  ワーカー: {args.workers}")
+          f"期間: {period_display}  ワーカー: {args.workers}")
     print()
 
     if not args.resume and Path(RESULT_FILE).exists():
@@ -340,8 +351,13 @@ def main():
         chunk = remaining[chunk_start: chunk_start + args.chunk]
 
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            futures = {executor.submit(backtest_one, t, args.days, args.strategy): t
-                       for t in chunk}
+            futures = {
+                executor.submit(
+                    backtest_one, t, args.days, args.strategy, None,
+                    args.start, args.end
+                ): t
+                for t in chunk
+            }
 
             for future in as_completed(futures):
                 ticker = futures[future]
