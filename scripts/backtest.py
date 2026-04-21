@@ -206,7 +206,8 @@ def write_to_db(args, summary: dict, all_results: list, logger):
             version_id = cur.fetchone()["id"]
         conn.commit()
 
-        # 3. runs insert
+        # 3. runs insert（--start/--end 使用時も days カラムに args.days を記録する。
+        #    DBスキーマに start_date/end_date カラムがないため現状の制約）
         with get_cursor(conn) as cur:
             cur.execute("""
                 INSERT INTO runs (strategy_id, version_id, days, tickers_count)

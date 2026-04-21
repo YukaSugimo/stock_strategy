@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import csv
-import itertools
 import json
 import os
 import sys
@@ -149,7 +148,6 @@ def main():
         all_period_results.append(period_entry)
 
         if best:
-            elapsed = time.time() - start_time
             print(f"  -> 最良: pf={best.get('profit_factor', '-')}  "
                   f"win={best.get('win_rate', '-')}%  "
                   f"trades={best.get('trade_count', 0)}  "
